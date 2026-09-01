@@ -3,6 +3,5 @@ import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/causeway/',
   plugins: [react(), tailwindcss()],
 })

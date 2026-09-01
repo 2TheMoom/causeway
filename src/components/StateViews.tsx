@@ -1,18 +1,3 @@
-export function LoadingState({ loadedCount }: { loadedCount: number }) {
-  return (
-    <div className="flex flex-col items-center gap-3 py-24 text-center">
-      <div
-        className="size-8 animate-spin rounded-full border-2 border-transparent"
-        style={{ borderTopColor: 'var(--series-1)', borderRightColor: 'var(--series-1)' }}
-      />
-      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-        Pulling transactions from Relay
-        {loadedCount > 0 && <span className="font-mono-tabular"> · {loadedCount} loaded</span>}
-      </p>
-    </div>
-  )
-}
-
 export function ErrorState({ message }: { message: string }) {
   return (
     <div

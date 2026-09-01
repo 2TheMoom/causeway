@@ -5,14 +5,26 @@ import { StatusBreakdown } from './components/StatusBreakdown'
 import { VolumeChart } from './components/VolumeChart'
 import { ChainBar } from './components/ChainBar'
 import { TransactionsTable } from './components/TransactionsTable'
-import { LoadingState, ErrorState, EmptyState, NoActivityState } from './components/StateViews'
+import { DashboardSkeleton } from './components/DashboardSkeleton'
+import { Identicon } from './components/Identicon'
+import { CopyButton } from './components/CopyButton'
+import { ErrorState, EmptyState, NoActivityState } from './components/StateViews'
 import { useTheme } from './hooks/useTheme'
 import { useAddressTracker } from './hooks/useAddressTracker'
+import { useRecentAddresses } from './hooks/useRecentAddresses'
+import { isValidAddress } from './lib/relay'
 import { formatCompactNumber, formatDate, formatUsdCompact, shortenAddress } from './lib/format'
 
 function App() {
   const { theme, toggleTheme } = useTheme()
   const { status, stats, chains, loadedCount, error, lookup } = useAddressTracker()
+  const { recent, remember } = useRecentAddresses()
+
+  function handleSubmit(address: string) {
+    const trimmed = address.trim()
+    if (isValidAddress(trimmed)) remember(trimmed)
+    lookup(trimmed)
+  }
 
   return (
     <div className="min-h-full">
@@ -47,23 +59,38 @@ function App() {
         </div>
 
         <div className="mx-auto max-w-xl">
-          <AddressBar onSubmit={lookup} isInvalid={status === 'invalid'} />
+          <AddressBar onSubmit={handleSubmit} isInvalid={status === 'invalid'} recent={recent} />
         </div>
 
         <div className="mt-10">
           {status === 'idle' && <EmptyState />}
           {status === 'invalid' && <EmptyState />}
-          {status === 'loading' && <LoadingState loadedCount={loadedCount} />}
+
+          {status === 'loading' && (
+            <div className="rise-in">
+              {loadedCount > 0 && (
+                <p className="mb-4 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <span className="font-mono-tabular">{loadedCount}</span> transactions loaded…
+                </p>
+              )}
+              <DashboardSkeleton />
+            </div>
+          )}
+
           {status === 'error' && error && <ErrorState message={error} />}
 
           {status === 'loaded' && stats && stats.totalTransactions === 0 && <NoActivityState />}
 
           {status === 'loaded' && stats && stats.totalTransactions > 0 && (
-            <div className="flex flex-col gap-6">
+            <div className="rise-in flex flex-col gap-6">
               <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                <span className="font-mono-tabular text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {shortenAddress(stats.recent[0]?.user ?? '', 6)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <Identicon address={stats.recent[0]?.user ?? ''} size={24} />
+                  <span className="font-mono-tabular text-sm" style={{ color: 'var(--text-primary)' }}>
+                    {shortenAddress(stats.recent[0]?.user ?? '', 6)}
+                  </span>
+                  <CopyButton value={stats.recent[0]?.user ?? ''} />
+                </div>
                 {stats.firstSeenAt && (
                   <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     First seen on Relay {formatDate(stats.firstSeenAt)}
@@ -75,6 +102,7 @@ function App() {
                 <StatTile
                   label="Total volume"
                   value={formatUsdCompact(stats.totalVolumeUsd)}
+                  trend={stats.series.map((b) => b.volumeUsd)}
                   icon={
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />

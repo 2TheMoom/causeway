@@ -4,28 +4,39 @@ Look up any EVM address and see its total volume, transaction count, chain
 activity, and history on the [Relay](https://relay.link) bridge — no signup,
 no wallet connection.
 
-Live data comes straight from Relay's public `api.relay.link/requests/v2`
-endpoint, called directly from the browser (it's CORS-open and needs no API
-key). Everything is client-side; there's no backend.
+## Architecture
+
+React/Vite frontend + two Vercel serverless functions (`/api/relay-chains`,
+`/api/relay-requests`) that proxy Relay's public `api.relay.link/requests/v2`
+endpoint. The proxy exists for three reasons:
+
+- **Shared rate limit.** Relay's public tier has no per-user key, so its
+  rate limit is shared across every anonymous caller. A single wallet lookup
+  can page through dozens of requests; proxying lets the server retry with
+  backoff on a 429 instead of surfacing it straight to the visitor.
+- **Edge caching.** Responses are served with `Cache-Control: s-maxage`, so
+  repeat lookups of the same (popular) address are served from Vercel's CDN
+  instead of hitting Relay again.
+- **Future API key.** Relay's `/requests/v2` is deprecated and sunsets
+  **2026-11-24** in favor of `/requests/v3`, which requires an API key. That
+  key can live as a server-side env var on the proxy and never touch the
+  client — swapping it in later is a same-file change to `api/relay-requests.ts`,
+  no architecture change needed.
 
 ## Stack
 
-Vite + React + TypeScript + Tailwind CSS v4. No chart library — the volume
-chart and chain bars are hand-rolled SVG.
+Vite + React + TypeScript + Tailwind CSS v4, deployed on Vercel. No chart
+library — the volume chart and chain bars are hand-rolled SVG.
 
 ## Running locally
 
 ```bash
 npm install
-npm run dev
+vercel dev   # serves the frontend and the /api functions together
 ```
 
-## Deploying
-
-Push to `main` and the included GitHub Actions workflow
-(`.github/workflows/deploy.yml`) builds and publishes to GitHub Pages
-automatically. Enable Pages for the repo under **Settings → Pages → Source:
-GitHub Actions** once, and it takes over from there.
+(`npm run dev` also works for frontend-only iteration, but `/api` calls will
+404 since Vite's dev server doesn't run the serverless functions.)
 
 ## A note on data sources
 
@@ -33,12 +44,3 @@ Polymer (polymerlabs.org) isn't included. It's cross-chain messaging
 infrastructure other bridges build on, not a bridge that moves user funds
 itself — there's no public, address-indexed volume data for it the way there
 is for Relay.
-
-## Known limitation
-
-Relay's `/requests/v2` endpoint is deprecated and scheduled to sunset on
-**2026-11-24** in favor of `/requests/v3`, which requires an API key. Since
-this is a fully static site, that key can't be embedded in client code
-without being exposed — migrating past the sunset date will need a small
-serverless proxy (e.g. a Cloudflare Worker) just to hold the key, in front of
-this same static frontend.

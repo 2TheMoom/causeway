@@ -1,4 +1,4 @@
-const API_BASE = 'https://api.relay.link'
+const API_BASE = '/api'
 
 export interface RelayChain {
   id: number
@@ -49,7 +49,7 @@ let chainsCache: Promise<Map<number, RelayChain>> | null = null
 
 export function fetchChains(): Promise<Map<number, RelayChain>> {
   if (!chainsCache) {
-    chainsCache = fetch(`${API_BASE}/chains`)
+    chainsCache = fetch(`${API_BASE}/relay-chains`)
       .then((res) => {
         if (!res.ok) throw new Error(`chains request failed (${res.status})`)
         return res.json()
@@ -78,13 +78,14 @@ export async function fetchAllRequests(
   const all: RelayRequest[] = []
   let continuation: string | undefined
   for (let page = 0; page < MAX_PAGES; page++) {
-    const url = new URL(`${API_BASE}/requests/v2`)
-    url.searchParams.set('user', address)
-    url.searchParams.set('limit', String(PAGE_LIMIT))
-    if (continuation) url.searchParams.set('continuation', continuation)
+    const params = new URLSearchParams({ user: address, limit: String(PAGE_LIMIT) })
+    if (continuation) params.set('continuation', continuation)
 
-    const res = await fetch(url.toString(), { signal })
-    if (!res.ok) throw new Error(`Relay API request failed (${res.status})`)
+    const res = await fetch(`${API_BASE}/relay-requests?${params}`, { signal })
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      throw new Error(body?.error ?? `Relay API request failed (${res.status})`)
+    }
     const json: RequestsResponse = await res.json()
 
     all.push(...json.requests)

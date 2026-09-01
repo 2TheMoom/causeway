@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { TimeBucket } from '../lib/aggregate'
 import { formatUsdCompact, formatUsdFull } from '../lib/format'
+import { smoothLinePath } from '../lib/svgPath'
 
 interface Props {
   series: TimeBucket[]
@@ -13,6 +14,7 @@ export function VolumeChart({ series }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(600)
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const gradientId = useId()
 
   useEffect(() => {
     const el = containerRef.current
@@ -46,7 +48,7 @@ export function VolumeChart({ series }: Props) {
     return { x, y, bucket }
   })
 
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+  const linePath = smoothLinePath(points)
   const areaPath = `${linePath} L ${points[points.length - 1].x} ${PAD.top + innerH} L ${points[0].x} ${PAD.top + innerH} Z`
 
   const labelStep = Math.max(1, Math.ceil(series.length / 6))
@@ -89,6 +91,13 @@ export function VolumeChart({ series }: Props) {
         onPointerLeave={() => setHoverIdx(null)}
         className="touch-none"
       >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--series-1)" stopOpacity={0.16} />
+            <stop offset="100%" stopColor="var(--series-1)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+
         {[0.25, 0.5, 0.75, 1].map((frac) => (
           <line
             key={frac}
@@ -101,7 +110,7 @@ export function VolumeChart({ series }: Props) {
           />
         ))}
 
-        <path d={areaPath} fill="var(--series-1)" opacity={0.1} stroke="none" />
+        <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />
         <path d={linePath} fill="none" stroke="var(--series-1)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
 
         {points.map((p, i) => (
