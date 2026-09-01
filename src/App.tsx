@@ -17,7 +17,7 @@ import { formatCompactNumber, formatDate, formatUsdCompact, shortenAddress } fro
 
 function App() {
   const { theme, toggleTheme } = useTheme()
-  const { status, stats, chains, loadedCount, error, lookup } = useAddressTracker()
+  const { status, stats, chains, partial, error, lookup } = useAddressTracker()
   const { recent, remember } = useRecentAddresses()
 
   function handleSubmit(address: string) {
@@ -68,11 +68,6 @@ function App() {
 
           {status === 'loading' && (
             <div className="rise-in">
-              {loadedCount > 0 && (
-                <p className="mb-4 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
-                  <span className="font-mono-tabular">{loadedCount}</span> transactions loaded…
-                </p>
-              )}
               <DashboardSkeleton />
             </div>
           )}
@@ -83,6 +78,14 @@ function App() {
 
           {status === 'loaded' && stats && stats.totalTransactions > 0 && (
             <div className="rise-in flex flex-col gap-6">
+              {partial && (
+                <div
+                  className="rounded-xl border px-4 py-2.5 text-xs"
+                  style={{ borderColor: 'var(--status-warning)', background: 'color-mix(in srgb, var(--status-warning) 10%, transparent)', color: 'var(--text-secondary)' }}
+                >
+                  Relay's API is currently rate-limited, so this may not include the address's full history. Refresh in a bit for the complete picture.
+                </div>
+              )}
               <div className="flex flex-wrap items-center justify-between gap-2 px-1">
                 <div className="flex items-center gap-2">
                   <Identicon address={stats.recent[0]?.user ?? ''} size={24} />

@@ -42,7 +42,7 @@ export interface RelayRequest {
 
 interface RequestsResponse {
   requests: RelayRequest[]
-  continuation?: string | null
+  partial?: boolean
 }
 
 let chainsCache: Promise<Map<number, RelayChain>> | null = null
@@ -67,34 +67,20 @@ export function fetchChains(): Promise<Map<number, RelayChain>> {
   return chainsCache
 }
 
-const PAGE_LIMIT = 50
-const MAX_PAGES = 40 // hard cap (~2000 records) so one whale address can't hang the page
+export interface FetchRequestsResult {
+  requests: RelayRequest[]
+  partial: boolean
+}
 
-export async function fetchAllRequests(
-  address: string,
-  signal: AbortSignal,
-  onPage?: (loaded: number) => void,
-): Promise<RelayRequest[]> {
-  const all: RelayRequest[] = []
-  let continuation: string | undefined
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const params = new URLSearchParams({ user: address, limit: String(PAGE_LIMIT) })
-    if (continuation) params.set('continuation', continuation)
-
-    const res = await fetch(`${API_BASE}/relay-requests?${params}`, { signal })
-    if (!res.ok) {
-      const body = await res.json().catch(() => null)
-      throw new Error(body?.error ?? `Relay API request failed (${res.status})`)
-    }
-    const json: RequestsResponse = await res.json()
-
-    all.push(...json.requests)
-    onPage?.(all.length)
-
-    if (!json.continuation || json.requests.length < PAGE_LIMIT) break
-    continuation = json.continuation
+export async function fetchAllRequests(address: string, signal: AbortSignal): Promise<FetchRequestsResult> {
+  const params = new URLSearchParams({ user: address })
+  const res = await fetch(`${API_BASE}/relay-requests?${params}`, { signal })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Relay API request failed (${res.status})`)
   }
-  return all
+  const json: RequestsResponse = await res.json()
+  return { requests: json.requests, partial: Boolean(json.partial) }
 }
 
 export function isValidAddress(value: string): boolean {

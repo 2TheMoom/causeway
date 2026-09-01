@@ -17,6 +17,15 @@ endpoint. The proxy exists for three reasons:
 - **Edge caching.** Responses are served with `Cache-Control: s-maxage`, so
   repeat lookups of the same (popular) address are served from Vercel's CDN
   instead of hitting Relay again.
+- **Silent truncation, not just 429s.** Under active throttling, Relay
+  sometimes returns a normal `200` with a full page of results but omits the
+  pagination cursor — indistinguishable from "this is genuinely the end of
+  the address's history" unless you know to be suspicious of it. The proxy
+  treats an exactly-full page with no cursor as likely-truncated and reports
+  `partial: true` rather than trusting it; the frontend shows a banner when
+  that happens. This is a heuristic, not a certainty — an address whose real
+  history happens to be an exact multiple of 50 transactions would trigger a
+  harmless false positive, which is the safer failure mode than the reverse.
 - **Future API key.** Relay's `/requests/v2` is deprecated. Per its own
   response payload, Relay began reducing v2's rate limit **in stages
   starting 2026-09-01**, retiring it entirely on **2026-11-24** in favor of

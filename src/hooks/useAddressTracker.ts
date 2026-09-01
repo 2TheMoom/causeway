@@ -9,7 +9,7 @@ export function useAddressTracker() {
   const [status, setStatus] = useState<Status>('idle')
   const [stats, setStats] = useState<AddressStats | null>(null)
   const [chains, setChains] = useState<Map<number, RelayChain>>(new Map())
-  const [loadedCount, setLoadedCount] = useState(0)
+  const [partial, setPartial] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -31,14 +31,14 @@ export function useAddressTracker() {
     const controller = new AbortController()
     abortRef.current = controller
     setStatus('loading')
-    setLoadedCount(0)
     setError(null)
 
-    Promise.all([fetchChains(), fetchAllRequests(trimmed, controller.signal, setLoadedCount)])
-      .then(([chainMap, requests]) => {
+    Promise.all([fetchChains(), fetchAllRequests(trimmed, controller.signal)])
+      .then(([chainMap, result]) => {
         if (controller.signal.aborted) return
         setChains(chainMap)
-        setStats(computeStats(requests, chainMap))
+        setPartial(result.partial)
+        setStats(computeStats(result.requests, chainMap))
         setStatus('loaded')
       })
       .catch((err) => {
@@ -50,5 +50,5 @@ export function useAddressTracker() {
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
-  return { address, setAddress, status, stats, chains, loadedCount, error, lookup }
+  return { address, setAddress, status, stats, chains, partial, error, lookup }
 }
