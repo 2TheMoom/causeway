@@ -17,11 +17,15 @@ endpoint. The proxy exists for three reasons:
 - **Edge caching.** Responses are served with `Cache-Control: s-maxage`, so
   repeat lookups of the same (popular) address are served from Vercel's CDN
   instead of hitting Relay again.
-- **Future API key.** Relay's `/requests/v2` is deprecated and sunsets
-  **2026-11-24** in favor of `/requests/v3`, which requires an API key. That
-  key can live as a server-side env var on the proxy and never touch the
-  client — swapping it in later is a same-file change to `api/relay-requests.ts`,
-  no architecture change needed.
+- **Future API key.** Relay's `/requests/v2` is deprecated. Per its own
+  response payload, Relay began reducing v2's rate limit **in stages
+  starting 2026-09-01**, retiring it entirely on **2026-11-24** in favor of
+  `/requests/v3`, which requires an API key. The staged throttling is
+  already live, not just a future cliff — the proxy's retry/backoff and
+  edge caching buy headroom, but a real Relay API key (free, via their
+  dashboard) should be dropped into `api/relay-requests.ts` as a
+  server-side env var sooner rather than later, since v2's allowance keeps
+  shrinking between now and November.
 
 ## Stack
 
