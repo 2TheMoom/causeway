@@ -80,8 +80,8 @@ export function computeStats(requests: RelayRequest[], chains: Map<number, Relay
     totalVolumeUsd += vol
 
     if (req.status === 'success') successCount++
-    else if (req.status === 'pending') pendingCount++
-    else failedCount++
+    else if (req.status === 'failure' || req.status === 'refund') failedCount++
+    else pendingCount++ // pending, waiting, depositing, submitted — all in-flight
 
     const meta = req.data?.metadata
     const originId = meta?.currencyIn?.currency.chainId

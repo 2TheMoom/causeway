@@ -9,6 +9,9 @@ interface Props {
 const STATUS_STYLE: Record<string, { color: string; label: string }> = {
   success: { color: 'var(--status-good)', label: 'Success' },
   pending: { color: 'var(--status-warning)', label: 'Pending' },
+  waiting: { color: 'var(--status-warning)', label: 'Waiting' },
+  depositing: { color: 'var(--status-warning)', label: 'Depositing' },
+  submitted: { color: 'var(--status-warning)', label: 'Submitted' },
   failure: { color: 'var(--status-critical)', label: 'Failed' },
   refund: { color: 'var(--status-critical)', label: 'Refunded' },
 }
