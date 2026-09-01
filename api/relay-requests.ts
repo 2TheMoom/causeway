@@ -71,6 +71,7 @@ interface V3Request {
 interface V3Page {
   requests: V3Request[]
   continuation?: string | null
+  total?: number
 }
 
 function normalize(req: V3Request): NormalizedRequest {
@@ -119,6 +120,7 @@ async function fetchPage(apiKey: string, user: string, continuation: string | un
   const url = new URL(`${RELAY_BASE}/requests/v3`)
   url.searchParams.set('user', user)
   url.searchParams.set('limit', String(PAGE_LIMIT))
+  url.searchParams.set('includeTotal', 'true')
   if (continuation) url.searchParams.set('continuation', continuation)
 
   let lastStatus = 0
@@ -158,6 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const all: NormalizedRequest[] = []
   let continuation: string | undefined
   let partial = false
+  let reportedTotal: number | undefined
 
   for (let page = 0; page < MAX_PAGES; page++) {
     if (Date.now() > deadline) {
@@ -167,6 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const json = await fetchPage(apiKey, user, continuation)
       all.push(...json.requests.map(normalize))
+      if (reportedTotal === undefined) reportedTotal = json.total
       if (!json.continuation) {
         // An exactly-full page with no cursor is suspicious under throttling: Relay can drop
         // the token instead of erroring, which looks identical to "this is the end of history."
@@ -188,6 +192,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // Belt-and-suspenders: even a "clean" completion (cursor exhausted, no errors) is
+  // suspect if it doesn't match Relay's own reported total for the query.
+  if (!partial && reportedTotal !== undefined && all.length !== reportedTotal) partial = true
+
   res.setHeader('Cache-Control', partial ? 'no-store' : 's-maxage=45, stale-while-revalidate=300')
-  res.status(200).json({ requests: all, partial })
+  res.status(200).json({ requests: all, partial, total: reportedTotal })
 }
