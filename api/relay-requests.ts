@@ -170,10 +170,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!json.continuation) {
         // An exactly-full page with no cursor is suspicious under throttling: Relay can drop
         // the token instead of erroring, which looks identical to "this is the end of history."
+        // A short page with no cursor is the trustworthy, unambiguous end.
         if (json.requests.length === PAGE_LIMIT) partial = true
         break
       }
-      if (json.requests.length < PAGE_LIMIT) break
+      // Trust the cursor, not the page length — a short page can still carry a valid
+      // continuation (observed on v3), so length alone is not a safe stop condition.
       continuation = json.continuation
     } catch (err) {
       if (all.length > 0) {
